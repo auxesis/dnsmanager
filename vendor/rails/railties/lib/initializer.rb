@@ -209,7 +209,7 @@ module Rails
     end
 
     def load_observers
-      ActiveRecord::Base.instantiate_observers
+      ActiveRecord::Base.instantiate_observers if configuration.frameworks.include?(:active_record)
     end
 
     # This initialzation sets $KCODE to 'u' to enable the multibyte safe operations.
@@ -263,7 +263,7 @@ module Rails
     # logger is already set, it is not changed, otherwise it is set to use
     # +RAILS_DEFAULT_LOGGER+.
     def initialize_framework_logging
-      for framework in ([ :active_record, :action_controller, :action_mailer ] & configuration.frameworks)
+      for framework in ([ :action_controller, :action_mailer ] & configuration.frameworks)
         framework.to_s.camelize.constantize.const_get("Base").logger ||= RAILS_DEFAULT_LOGGER
       end
     end
