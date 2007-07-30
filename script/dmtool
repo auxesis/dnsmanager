@@ -1,0 +1,29 @@
+#!/usr/bin/ruby1.8
+
+require File.dirname(__FILE__) + '/../config/environment'
+require 'yaml'
+require 'digest/sha1'
+require 'subcommand_pattern'
+
+register_command('password', {:arg_count => 2}) do |args|
+	user, pass = args
+
+	begin
+		File.new($pwfile).flock(File::LOCK_EX)
+	rescue Errno::ENOENT
+		File.open($pwfile, 'w') {|fd|}
+	end
+	
+	begin
+		pwdata = YAML::load_file($pwfile)
+		pwdata ||= {}
+		pwdata[user] = Digest::SHA1.hexdigest(pass)
+		File.open($pwfile, 'w') {|fd| YAML::dump(pwdata, fd) }
+	ensure
+		File.new($pwfile).flock(File::LOCK_UN)
+	end
+end
+
+if __FILE__ == $0
+	run_command(ARGV)
+end

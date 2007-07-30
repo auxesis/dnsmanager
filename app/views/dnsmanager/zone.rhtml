@@ -1,0 +1,84 @@
+<% if flash[:error] -%>
+ <p style="color: red"><%= flash[:error] %></p>
+<% end -%>
+<% if flash[:notice] -%>
+ <p><%= flash[:notice] %></p>
+<% end -%>
+<%= form_tag %>
+<p>
+ Select the domain you wish to edit:
+ <select name="domain">
+  <%= options_for_select(@domainlist, session[:domain]) %>
+ </select>
+ <%= submit_tag "Change Domain" %>
+</p>
+</form>
+<% unless @soa.nil? -%>
+ <p>
+  <%= link_to 'Add Record', :action => 'add' %>
+ </p>
+ <p>
+  Go to: <a href="#NS">Nameservers</a> | <a href="#CNAME">Aliases</a> | <a href="#A">Hosts</a>
+ </p>
+ <table width="100%" cellspacing=0 cellpadding=5>
+  <tr>
+   <th>
+    Hostname
+   </th>
+   <th>
+    TTL
+   </th>
+   <th>
+    Type
+   </th>
+   <th>
+    Data
+   </th>
+  </tr>
+  <tr>
+   <td>
+    &nbsp;
+   </td>
+   <td>
+    <tt><%= @soa.ttl %></tt>
+   </td>
+   <td>
+    <tt><%= @soa.rrtype %></tt>
+   </td>
+   <td>
+    <tt><%= @soa.rrdata %></tt>
+   </td>
+   <td>
+    &nbsp;
+   </td>
+  </tr>
+  <% [ @ns, @aliases, @hosts ].each do |records| -%>
+   <% next if records[0].nil? -%>
+   <tr>
+    <td colspan="5">
+     <a name="<%= records[0].rrtype %>"><hr></a>
+    </td>
+   </tr>
+   <% records.each do |domrecord| -%>
+    <tr>
+     <td valign="top">
+      <tt><%= domrecord.hostname %></tt>
+     </td>
+     <td valign="top">
+      <tt><%= domrecord.ttl %></tt>
+     </td>
+     <td valign="top">
+      <tt><%= domrecord.rrtype %></tt>
+     </td>
+     <td valign="top">
+      <tt><%= domrecord.rrdata %></tt>
+     </td>
+     <td valign="top">
+      <%= link_to '(edit)', { :action => 'edit', :id => domrecord.idstring } %>
+      | <%= link_to '(delete)', { :action => 'delete', :id => domrecord.idstring } %>
+     </td>
+    </tr>
+   <% end -%>
+  <% end -%>
+ </table>
+<% end -%>

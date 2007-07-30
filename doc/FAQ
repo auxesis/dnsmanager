@@ -1,0 +1,36 @@
+Common Questions
+------------------
+
+Q: What's wrong with hand-editing my zonefiles?
+
+A: Nothing, as long as you're not using dynamic DNS updates, and you're
+   quite careful to update the serial and not make any syntax errors.
+   
+   It's becoming increasingly common for organisations to configure their
+   DHCP server to modify the DNS zone when a DHCP lease is made (so that you
+   can SSH to the hostname rather than have to guess at the IP address, for
+   instance).  I first started working on DNSManager after deploying such a
+   solution, since once you've got dynamic DNS happening, you can never
+   safely edit your zone files by hand, since the DNS server might decide to
+   go and change the zone files itself at an inopportune moment.
+   
+   There's also the issue of always being sure that you're creating a
+   syntactically valid zone file, and updating the serial.  Failing to
+   update the serial before reload means that your updates sometimes get
+   lost, and creating an invalid zone file means pain and suffering.  You
+   can (or at least, will be able to in the future) point a lesser mortal at
+   DNSManager and have them manage DNS entries, instead of needing a
+   relative guru to massage zone files.
+
+
+Q: How do I install this program?
+
+A: See docs/INSTALL.
+
+
+Q: How do I setup my DNS server to allow DNSManager to edit the zones?
+
+A: That's a bit of a long question.  The short answer is to allow zone
+   transfers and updates from the IP address on which DNSManager is running,
+   or the TSIG key you configured for the domain.  The long answer is in
+   docs/BIND_CONFIG.

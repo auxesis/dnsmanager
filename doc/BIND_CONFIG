@@ -1,0 +1,141 @@
+Configuring Bind 9 to work with DNSManager
+============================================
+
+DNSManager uses some special features of your DNS server to work.  These are
+the ability to transfer whole zones at once, and dynamic DNS updates.
+
+The first of these, zone transfer, is used regularly by slave DNS servers to
+get the entire zone file from the master authoritative server.  The ability
+to download an entire zone file, however, is a bit of a security risk -- if
+you can get the zone file, you can get a map of every host in the zone. 
+While this isn't a security risk itself, it can give an attacker a map of
+your network, which could facilitate further attacks.
+
+Dynamic DNS updates, by contrast, are rarely used by DNS administrators, as
+it is a relatively new feature, isn't widely documented on the web, and is
+generally seen as something of a "niche" feature.  The security implications
+of widely available DNS updates are pretty severe, too -- random people
+adding, changing, and deleting your zone records is a pretty nasty thing.
+
+This document is intended to provide instructions for securely enabling zone
+transfers and dynamic DNS updates on a Bind 9 DNS server, and creating the
+matching records in the DNSManager configuration.  Other DNS servers may
+have equivalent configuration, and I welcome contributions of documentation
+for other DNS servers.
+
+
+Step 0: Preparation
+---------------------
+
+I assume that you've installed DNSManager, can get to the login screen, have
+configured a user, and can login.  I also assume that you've got a properly
+installed and configured copy of Bind 9 installed somewhere.
+
+Throughout this manual I'll be assuming that you're configuring a zone
+called 'example.org'.
+
+
+Step 1: Generating Keys
+-------------------------
+
+The DNS specs make provision for "transactional signatures" in DNS requests.
+These are rarely used, since key generation and management are (to use a
+technical term) a pain in the arse.  But, they're the only way to produce a
+reasonably secure DNS update, so we'll have to live with it.
+
+To generate a key, run the following command on your authoritative DNS
+server:
+
+	dnssec-keygen -a hmac-md5 -b 128 -n HOST example.org
+	
+This will quickly run, and will then print out something that looks like
+"Kexample.org.+157+65421" (the last number will be different to this example
+shown).  This is the 'base name' for the key.  There will now also be, in
+your current working directory, a pair of files with names starting with the
+above 'base name', and ending in '.key' and '.private'.
+
+Take these two files, and move them somewhere you'll remember them (I like
+to create a directory called '/etc/bind/keys' and put all my keys in there).
+
+
+Step 2: Tell BIND about your keys
+-----------------------------------
+
+You need to take the key data out of the '.private' file created above, by
+copying the data out of the 'Key:' field.  For example, if your '.private'
+file contained the following line:
+
+Key: kL72twDh2YVP0ORI7aN2Vg==
+
+then the key data would be 'kL72twDh2YVP0ORI7aN2Vg=='.
+
+You then need to add the following stanza to your bind configuration:
+
+key example.org {
+	algorithm hmac-md5;
+	secret "kL72twDh2YVP0ORI7aN2Vg==";
+};
+
+Of course, you replace the data for the 'secret' line above with your own
+key data.
+
+Security note: Anyone who can read this configuration can use that data to
+make their own updates and zone transfers.  You should secure your config
+file against other people reading it by restricting the permissions on the
+file appropriately.  I like to create a separate keys.conf file, make owned
+by root:bind, and with mode 0640.  Then include that file in your main
+named.conf file so bind reads it on startup.  That'll learn 'em.  Of course,
+those particular settings assume that your nameserver runs in the group
+'bind'.
+
+
+Step 3: Tell Bind to use your keys
+------------------------------------
+
+More named.conf editing.
+
+In the zone stanza for example.org, add the key you've configured in the
+previous step to the allow-update (Dynamic DNS updates) and allow-transfer
+(zone transfers) configuration variables.  Your zone stanza might then look
+something like this:
+
+zone "example.org" {
+	type master;
+	file "/etc/bind/zone/example.org";
+	allow-update { key example.org; };
+	allow-transfer { key example.org; };
+};
+
+
+Step 4: Let Bind update the zone file
+---------------------------------------
+
+When bind is handling dynamic updates, it rewrites the zone file (hence why
+you shouldn't modify the zone file by hand when using dynamic updates), and
+writes out a transaction log in the meantime.  As such, your zone files need
+to be writable by the user or group that bind runs as, and the directory
+containing your zone files must be writable by bind as well.
+
+My solution for this problem is to create /etc/bind/zone, put all my zone
+files in there, and then just "chgrp bind -R /etc/bind/zone; chmod g+w -R
+/etc/bind/zone".
+
+After all of this, you're right to restart bind to let all the new config
+settings take effect.
+
+
+Step 5: Tell DNSManager about your keys
+-----------------------------------------
+
+The final thing is to tell DNSManager about the keys that you're now using. 
+First, copy the Kexample.org* files into config/dns_keys in your DNSManager
+installation, then modify config/domains.yml to add a key line, like so:
+
+example.org:
+  master: 192.168.0.1
+  key: Kexample.org.+157+65421
+
+(assuming that your master authoritative server is at 192.168.0.1, of
+course).
+
+Now, you should be able to read and modify your zones in secure comfort.

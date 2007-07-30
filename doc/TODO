@@ -1,0 +1,25 @@
+Features I want in DNS Manager
+---
+
+Next release:
+
+* "Master/slave" domains (make a change to the master domain, and the same
+  record gets added to all of the slave domains)
+* Structured UI for different record types (so if you pick to add an MX
+	record, for instance, you get a form which asks you for the
+	preference number and hostname)
+* Comprehensive sanity checking on input
+* Simple Web service interface to the basic update functionality
+
+Customer-facing release:
+
+* An attractive UI
+* Better user management -- specifically, the ability to restrict certain
+	users to only editing some domains, and groups for users to be
+	assigned to, so you can easily modify the list of permitted domains
+	for all of the users in a group.
+
+Wishlist items for the dim future:
+
+* Automatic discovery of the zone master (via SOA lookup)
+* Reverse address management

@@ -1,0 +1,17 @@
+ <p>
+  <label for="hostname">Hostname:</label>
+  <%= text_field_tag 'hostname', @rr.hostname %><tt>.<%= h @domain.domain %></tt>
+ </p>
+ <p>
+  <label for="ttl">TTL:</label>
+  <%= text_field_tag 'ttl', @rr.ttl %>
+ </p>
+ <p>
+  <label for="rrtype">Type:</label>
+  <%= text_field_tag 'rrtype', @rr.rrtype %>
+ </p>
+ <p>
+  <label for="rrdata">Data:</label>
+  <%= text_field_tag 'rrdata', @rr.rrdata %>
+  (Don't forget the trailing '.' if needed!)
+ </p>

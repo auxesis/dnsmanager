@@ -1,0 +1,24 @@
+DNSManager
+============
+
+DNSManager is a web application for managing your DNS zones directly, via
+zone transfers and dynamic DNS updates.
+
+You configure DNSManager by listing the zones you want to be able to edit,
+along with the master host for the zone, and setup one or more users.  Once
+that's done, just fire up the included webserver (./script/server) and
+proceed to http://<hostname>:3000/ to login and start editing.
+
+Further documentation
+-----------------------
+
+The documentation for the system is in the following places (presented in
+suggested reading order):
+
+* The FAQ is in doc/FAQ.
+
+* Installation instructions are in doc/INSTALL.
+
+* The operations manual is in doc/MANUAL.
+
+* My (very rough) future feature wishlist is in doc/TODO.

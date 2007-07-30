@@ -1,0 +1,10 @@
+#!/bin/sh -e
+
+if [ -n "$FAUX_NSUPDATE_KEY" ]; then
+	if [ "$1" != "-k" ] || [ "$2" != "$FAUX_NSUPDATE_KEY" ]; then
+		/bin/cat >/dev/null
+		exit 1
+	fi
+fi
+
+/bin/cat >> $FAUX_NSUPDATE_OUTPUT

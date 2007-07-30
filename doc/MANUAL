@@ -1,0 +1,39 @@
+Authentication
+================
+
+To prevent just anyone from modifying your zones, DNSManager contains a
+simple authentication system.  To add users or change their passwords, just
+run "./script/dmtool password <username> <password>" from the root of the
+DNSManager installation.  This will create a new user if the user doesn't
+already exist, or will modify the existing user's password to suit.
+
+There is not currently any way of restricting a user to editing some subset
+of the available domains, although this is a planned feature (for the
+distant future).
+
+
+The List Of Domains To Edit
+=============================
+
+As an ease-of-use thing, you must create a list of all of the domains you
+wish to be able to edit using DNSManager.  This is quite a simple list --
+you just need to create config/domains.yml, and fill it full of stanzas like
+this:
+
+example.org:
+  master: 127.0.0.1
+
+The format is quite simple -- the first line is the zone to edit, while the
+second line (indented with spaces) specifies the hostname or IP address of
+the master DNS server for the zone.
+
+If you wish to use a TSIG key to authenticate access to the domain (highly
+recommended), place the key files in config/dns_keys, and specify the key
+name as part of the domain record, like this:
+
+example.org:
+  master: 127.0.0.1
+  key: Kexample.org.+157.+00000
+
+When giving a key, do not add the '.private' or '.key' extension; DNSManager
+will add that for you if needed.
