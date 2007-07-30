@@ -7,7 +7,7 @@
 # was expected.
 
 class NilClass
-  WHINERS = [ ::Array ]
+  WHINERS = [ ::ActiveRecord::Base, ::Array ]
   
   @@method_class_map = Hash.new
   

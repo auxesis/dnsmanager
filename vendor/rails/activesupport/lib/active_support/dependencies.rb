@@ -47,7 +47,6 @@ module Dependencies #:nodoc:
   mattr_accessor :log_activity
   self.log_activity = false
   
-  # :nodoc:
   # An internal stack used to record which constants are loaded by any block.
   mattr_accessor :constant_watch_stack
   self.constant_watch_stack = []
@@ -130,7 +129,7 @@ module Dependencies #:nodoc:
   # Given +path+, a filesystem path to a ruby file, return an array of constant
   # paths which would cause Dependencies to attempt to load this file.
   # 
-  def loadable_constants_for_path(path, bases = load_paths - load_once_paths)
+  def loadable_constants_for_path(path, bases = load_paths)
     path = $1 if path =~ /\A(.*)\.rb\Z/
     expanded_path = File.expand_path(path)
     
@@ -169,6 +168,10 @@ module Dependencies #:nodoc:
     nil
   end
   
+  def load_once_path?(path)
+    load_once_paths.any? { |base| path.starts_with? base }
+  end
+  
   # Attempt to autoload the provided module name by searching for a directory
   # matching the expect path suffix. If found, the module is created and assigned
   # to +into+'s constants with the name +const_name+. Provided that the directory
@@ -200,7 +203,7 @@ module Dependencies #:nodoc:
       result = load_without_new_constant_marking path
     end
     
-    autoloaded_constants.concat newly_defined_paths
+    autoloaded_constants.concat newly_defined_paths unless load_once_path?(path)
     autoloaded_constants.uniq!
     log "loading #{path} defined #{newly_defined_paths * ', '}" unless newly_defined_paths.empty?
     return result
@@ -274,6 +277,8 @@ module Dependencies #:nodoc:
   
   # Determine if the given constant has been automatically loaded.
   def autoloaded?(desc)
+    # No name => anonymous module.
+    return false if desc.is_a?(Module) && desc.name.blank?
     name = to_constant_name desc
     return false unless qualified_const_defined? name
     return autoloaded_constants.include?(name)
@@ -376,7 +381,7 @@ module Dependencies #:nodoc:
     end
   end
   
-  class LoadingModule
+  class LoadingModule #:nodoc:
     # Old style environment.rb referenced this method directly.  Please note, it doesn't
     # actualy *do* anything any more.
     def self.root(*args)
@@ -405,8 +410,9 @@ protected
   def remove_constant(const)
     return false unless qualified_const_defined? const
     
+    const = $1 if /\A::(.*)\Z/ =~ const.to_s
     names = const.split('::')
-    if names.size == 1 || names.first.empty? # It's under Object
+    if names.size == 1 # It's under Object
       parent = Object
     else
       parent = (names[0..-2] * '::').constantize
