@@ -246,7 +246,7 @@ module ActionController
   #  end
   #
   module Routing
-    SEPARATORS = %w( / ; . , ? )
+    SEPARATORS = %w( / ? )
 
     # The root paths which may contain controller files
     mattr_accessor :controller_paths
