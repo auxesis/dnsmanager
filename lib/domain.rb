@@ -57,11 +57,13 @@ class Domain
 				rrdata = "#{rrdata}.#{@domain}"
 			end
 		end
+
+		rrname = host.empty? ? @domain : "#{host}.#{@domain}"
 		
 		IO.popen("nsupdate #{@keyopts}", 'w') do |fd|
 			fd.puts "zone #{@domain}"
 			fd.puts "server #{@master}"
-			fd.puts "update add #{host}.#{@domain} #{ttl} #{rrtype} #{rrdata}"
+			fd.puts "update add #{rrname} #{ttl} #{rrtype} #{rrdata}"
 			fd.puts "send"
 		end
 		

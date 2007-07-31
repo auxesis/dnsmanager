@@ -404,4 +404,46 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		
 		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete baldie.example.org CNAME curly\nupdate add baldie.example.org 450 CNAME shiny\nsend\n", out
 	end
+
+	def test_add_an_ns_record
+		out = nil
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			faux_dig do
+				out = faux_nsupdate { post :add,
+											 { :hostname => "", :ttl => 300, :rrtype => "NS", :rrdata => "ns69.example.com.", :commit => 'Add Record' },
+											 { :domain => 'example.org' }
+										  }
+			end
+		end
+		
+		assert_response :redirect
+		assert_redirected_to :action => 'zone'
+		
+		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add example.org 300 NS ns69.example.com.\nsend\n", out
+	end
+
+	def test_edit_update_for_ns_record
+		out = nil
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			faux_dig do
+			out = faux_nsupdate {
+				post :edit, { :id => '__NS__ns1.example.org.',
+			                 :hostname => '',
+			                 :ttl => '450',
+			                 :rrtype => 'NS',
+			                 :rrdata => 'ns3.example.org.',
+			                 :commit => 'Update Record'
+			               },
+			               { :domain => 'example.org'
+			               }
+			}
+			end
+		end
+		
+		assert_response :redirect
+		assert_redirected_to :action => 'zone'
+		
+		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete example.org NS ns1.example.org.\nupdate add example.org 450 NS ns3.example.org.\nsend\n", out
+	end
+
 end
