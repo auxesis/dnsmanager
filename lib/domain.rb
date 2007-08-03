@@ -18,7 +18,9 @@ class Domain
 		
 		@rrlist = []
 		
-		`dig @#{master} #{@keyopts} IN AXFR #{domain}`.each_line do |l|
+		dig = Dig.new(:master => domainlist[@domain]['master'],
+		              :key => domainlist[@domain]['key'])
+		dig.axfr(@domain).each_line do |l|
 			l.chomp!.gsub!(/;.*$/, '')
 
 			if l =~ /^\s*(\S+)\s+(?:(\d+)\s+)?(?:IN\s+)?(\S+)\s+(.*?)\s*$/
@@ -45,7 +47,7 @@ class Domain
 		end
 		
 		@rrlist.select { |dr| hostname == dr.hostname && rrtype == dr.rrtype && rrdata == dr.rrdata }.first
-	end		
+	end
 
 	def add(host, rrtype, rrdata, ttl = 86400)
 		if rrtype.upcase == 'CNAME'

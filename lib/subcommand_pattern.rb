@@ -18,7 +18,7 @@
 def register_command(cmd, opts, &block)
 	$commands ||= {}
 	raise ArgumentError.new("No block given with registraton of #{cmd}") unless block_given?
-	opts[:block] = block 
+	opts[:block] = block
 	$commands[cmd] = opts
 end
 

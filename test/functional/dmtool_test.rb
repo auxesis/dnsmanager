@@ -11,7 +11,7 @@ class DMToolTest < Test::Unit::TestCase
 			assert_equal({'user' => 'nopw', 'newuser' => Digest::SHA1::hexdigest('password')},
 			             YAML::load_file(tmpfile))
 		end
-	end		
+	end
 
 	def test_change_password
 		with_pwfile({'user' => 'nopw'}) do |tmpfile|

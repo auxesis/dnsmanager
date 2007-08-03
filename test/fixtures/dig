@@ -2,35 +2,43 @@
 
 HEREDIR=$(/bin/readlink -f $(/usr/bin/dirname $0))
 
+eval set -- $(/usr/bin/getopt -o k: -- "$@")
+while /bin/true; do
+	case "$1" in
+		-k)
+			KEY_GIVEN="$2"
+			shift 2
+			;;
+		--)
+			shift
+			break
+			;;
+	esac
+done
+
 if [ -n "$FAUX_DIG_KEY" ]; then
-	eval set -- $(/usr/bin/getopt -o k: -- "$@")
-	while /bin/true; do
-		case "$1" in
-			-k)
-				if [ "$2" = "$FAUX_DIG_KEY" ]; then
-					key_ok=1
-				else
-					key_ok=0
-				fi
-				shift 2
-				;;
-			--)
-				shift
-				break
-				;;
-		esac
-	done
-	
-	if [ "$key_ok" != "1" ]; then
-		exit 1
+	if [ "$FAUX_DIG_KEY" != "$KEY_GIVEN" ]; then
+		/bin/echo "; Incorrect key!"
+		/bin/echo "; Transfer failed."
+		exit 0
 	fi
+elif [ -n "$KEY_GIVEN" ]; then
+	/bin/echo "; Key given when none was requested."
+	/bin/echo "; We don't like that."
+	/bin/echo "; Transfer failed."
+	exit 0
 fi
 
 if [ "$1" = "notarealdomain" ]; then
 	/bin/echo "I really love this stuff"
 elif [ "$1" = "@127.0.0.1" -a "$2" = "IN" -a "$3" = "AXFR" ]; then
-	/bin/cat $HEREDIR/$4
+	if [ -f $HEREDIR/$4 ]; then
+		/bin/cat $HEREDIR/$4
+	else
+		/bin/echo "; Unknown domain."
+		/bin/echo "; Transfer failed."
+	fi
 else
-	/bin/echo "Arguments unknown"
-	exit 1
+	/bin/echo "; Argument structure wasn't right."
+	/bin/echo "; Transfer failed."
 fi

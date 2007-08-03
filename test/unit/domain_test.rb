@@ -2,88 +2,70 @@ require File::dirname(__FILE__) + '/../test_helper'
 require 'lib/domain'
 
 class DomainTest < Test::Unit::TestCase
-	def test_05_faux_dig
-		faux_dig do
-			assert_equal "I really love this stuff", `dig notarealdomain`.chomp
-			assert_equal File.read(File.dirname(__FILE__) + '/../fixtures/somethingfunny.com'),
-		                `dig @127.0.0.1 IN AXFR somethingfunny.com`
+	with_mocha do
+		def test_10_domain_read
+			mock_axfr(:master => '127.0.0.1', :domain => 'example.org')
+			d = nil
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+			end
+
+			assert_equal Domain, d.class
+			assert_equal 'example.org', d.domain
+			assert_equal '127.0.0.1', d.master
+
+			assert_equal Array, d['SOA'].class
+			assert_equal 1, d['SOA'].length
+			
+			assert_equal DomainRecord, d['SOA'][0].class
+			assert_equal 'SOA', d['SOA'][0].rrtype
+			assert_equal '', d['SOA'][0].hostname
+			assert_equal '( 1 2 3 4 5 )', d['SOA'][0].rrdata
+			assert_equal 1200, d['SOA'][0].ttl
+			
+			assert_equal DomainRecord, d['NS'][0].class
+			assert_equal 'NS', d['NS'][0].rrtype
+			assert_equal '', d['NS'][0].hostname
+			assert_equal 'ns1.example.org.', d['NS'][0].rrdata
+			assert_equal 1200, d['NS'][0].ttl
+			
+			assert_equal DomainRecord, d['NS'][1].class
+			assert_equal 'NS', d['NS'][1].rrtype
+			assert_equal '', d['NS'][1].hostname
+			assert_equal 'ns2.example.org.', d['NS'][1].rrdata
+
+			assert_equal DomainRecord, d['A'][0].class
+			assert_equal 'A', d['A'][0].rrtype
+			assert_equal 'curly.example.org', d['A'][0].hostname
+			assert_equal '192.168.1.2', d['A'][0].rrdata
+
+			assert_equal DomainRecord, d['A'][1].class
+			assert_equal 'A', d['A'][1].rrtype
+			assert_equal 'larry', d['A'][1].hostname
+			assert_equal '192.168.1.1', d['A'][1].rrdata
+			assert_equal 19200, d['A'][1].ttl
+			
+			assert_equal DomainRecord, d['A'][2].class
+			assert_equal 'A', d['A'][2].rrtype
+			assert_equal 'moe', d['A'][2].hostname
+			assert_equal '192.168.1.3', d['A'][2].rrdata
+
+			assert_equal DomainRecord, d['CNAME'][0].class
+			assert_equal 'CNAME', d['CNAME'][0].rrtype
+			assert_equal 'baldie', d['CNAME'][0].hostname
+			assert_equal 'curly', d['CNAME'][0].rrdata
+
+			assert_equal DomainRecord, d['CNAME'][1].class
+			assert_equal 'CNAME', d['CNAME'][1].rrtype
+			assert_equal 'ns1', d['CNAME'][1].hostname
+			assert_equal 'curly', d['CNAME'][1].rrdata
+			
+			assert_equal DomainRecord, d['MX'][0].class
+			assert_equal 'MX', d['MX'][0].rrtype
+			assert_equal '', d['MX'][0].hostname
+			assert_equal '10 moe.example.org.', d['MX'][0].rrdata
 		end
 	end
-
-	def test_06_faux_dig_with_key
-		faux_dig(:wants_key => 'fooferore') do
-			full_key = File.expand_path(File.join(RAILS_ROOT, 'config', 'dns_keys', 'fooferore'))
-			# Fail with no key
-			assert_equal "", `dig @127.0.0.1 IN AXFR somethingfunny.com`.chomp
-			# Fail with the wrong key
-			assert_equal "", `dig @127.0.0.1 -k thewrongkey IN AXFR somethingfunny.com`.chomp
-			# But the right key is a-OK
-			assert_equal File.read(File.dirname(__FILE__) + '/../fixtures/somethingfunny.com'),
-			             `dig @127.0.0.1 -k #{full_key} IN AXFR somethingfunny.com`
-		end
-	end
-
-	def test_10_domain_read
-		d = nil
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			faux_dig { d = Domain.new('example.org') }
-		end
-
-		assert_equal Domain, d.class
-		assert_equal 'example.org', d.domain
-		assert_equal '127.0.0.1', d.master
-
-		assert_equal Array, d['SOA'].class
-		assert_equal 1, d['SOA'].length
-		
-		assert_equal DomainRecord, d['SOA'][0].class
-		assert_equal 'SOA', d['SOA'][0].rrtype
-		assert_equal '', d['SOA'][0].hostname
-		assert_equal '( 1 2 3 4 5 )', d['SOA'][0].rrdata
-		assert_equal 1200, d['SOA'][0].ttl
-		
-		assert_equal DomainRecord, d['NS'][0].class
-		assert_equal 'NS', d['NS'][0].rrtype
-		assert_equal '', d['NS'][0].hostname
-		assert_equal 'ns1.example.org.', d['NS'][0].rrdata
-		assert_equal 1200, d['NS'][0].ttl
-		
-		assert_equal DomainRecord, d['NS'][1].class
-		assert_equal 'NS', d['NS'][1].rrtype
-		assert_equal '', d['NS'][1].hostname
-		assert_equal 'ns2.example.org.', d['NS'][1].rrdata
-
-		assert_equal DomainRecord, d['A'][0].class
-		assert_equal 'A', d['A'][0].rrtype
-		assert_equal 'curly.example.org', d['A'][0].hostname
-		assert_equal '192.168.1.2', d['A'][0].rrdata
-
-		assert_equal DomainRecord, d['A'][1].class
-		assert_equal 'A', d['A'][1].rrtype
-		assert_equal 'larry', d['A'][1].hostname
-		assert_equal '192.168.1.1', d['A'][1].rrdata
-		assert_equal 19200, d['A'][1].ttl
-		
-		assert_equal DomainRecord, d['A'][2].class
-		assert_equal 'A', d['A'][2].rrtype
-		assert_equal 'moe', d['A'][2].hostname
-		assert_equal '192.168.1.3', d['A'][2].rrdata
-
-		assert_equal DomainRecord, d['CNAME'][0].class
-		assert_equal 'CNAME', d['CNAME'][0].rrtype
-		assert_equal 'baldie', d['CNAME'][0].hostname
-		assert_equal 'curly', d['CNAME'][0].rrdata
-
-		assert_equal DomainRecord, d['CNAME'][1].class
-		assert_equal 'CNAME', d['CNAME'][1].rrtype
-		assert_equal 'ns1', d['CNAME'][1].hostname
-		assert_equal 'curly', d['CNAME'][1].rrdata
-		
-		assert_equal DomainRecord, d['MX'][0].class
-		assert_equal 'MX', d['MX'][0].rrtype
-		assert_equal '', d['MX'][0].hostname
-		assert_equal '10 moe.example.org.', d['MX'][0].rrdata
-	end		
 
 	def test_05_faux_nsupdate
 		nsupdate_output = nil
@@ -138,30 +120,36 @@ class DomainTest < Test::Unit::TestCase
 		end
 	end
 
-	def test_20_find_domain_record
-		d = nil
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			faux_dig { d = Domain.new('example.org') }
+	with_mocha do
+		def test_20_find_domain_record
+			mock_axfr(:master => '127.0.0.1', :domain => 'example.org')
+			d = nil
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+			end
+			
+			dr = d.find('larry__A__192.168.1.1')
+			
+			assert_equal DomainRecord, dr.class
+			assert_equal 'larry', dr.hostname
+			assert_equal 'A', dr.rrtype
+			assert_equal 19200, dr.ttl
+			assert_equal '192.168.1.1', dr.rrdata
 		end
-		
-		dr = d.find('larry__A__192.168.1.1')
-		
-		assert_equal DomainRecord, dr.class
-		assert_equal 'larry', dr.hostname
-		assert_equal 'A', dr.rrtype
-		assert_equal 19200, dr.ttl
-		assert_equal '192.168.1.1', dr.rrdata
 	end
 	
-	def test_21_find_unknown_domain_record
-		d = nil
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			faux_dig { d = Domain.new('example.org') }
+	with_mocha do
+		def test_21_find_unknown_domain_record
+			mock_axfr(:master => '127.0.0.1', :domain => 'example.org')
+			d = nil
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+			end
+			
+			assert d.find('larry__A__127.0.0.1').nil?
 		end
-		
-		assert d.find('larry__A__127.0.0.1').nil?
 	end
-
+	
 	def test_30_record_deletion
 		out = faux_nsupdate do
 			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do

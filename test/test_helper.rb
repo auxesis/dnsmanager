@@ -6,18 +6,38 @@ require 'action_controller/test_process'
 require 'breakpoint'
 require 'tempfile'
 
+begin
+	require 'mocha'
+rescue LoadError
+	puts "You do not have Mocha installed.  Some tests will not be run."
+end
+
 class Test::Unit::TestCase
+	def with_mocha
+		yield if block_given? and defined?(Mocha)
+	end
+
+	def self.with_mocha
+		yield if defined?(Mocha) and block_given?
+	end
+	
+	def mock_axfr(opts)
+		d = mock
+		d.expects(:axfr).with(opts[:domain]).returns(File.read(File.dirname(__FILE__) + "/fixtures/#{opts[:domain]}"))
+		Dig.expects(:new).with(:master => opts[:master], :key => opts[:key]).returns(d)
+	end
+	
 	def faux_dig(opts = {})
 		unless opts[:wants_key].nil?
 			key_path = File.join(RAILS_ROOT, 'config', 'dns_keys')
 			ENV['FAUX_DIG_KEY'] = File.expand_path(File.join(key_path, opts[:wants_key]))
 		end
 
-		@realpath = ENV['PATH']
+		realpath = ENV['PATH']
 		ENV['PATH'] = File.expand_path(File.dirname(__FILE__) + '/fixtures')
 		yield if block_given?
-		ENV['PATH'] = @realpath
-		
+	ensure
+		ENV['PATH'] = realpath
 		ENV['FAUX_DIG_KEY'] = nil
 	end
 
@@ -27,18 +47,19 @@ class Test::Unit::TestCase
 			ENV['FAUX_NSUPDATE_KEY'] = File.expand_path(File.join(key_path, opts[:wants_key]))
 		end
 		
-		@realpath = ENV['PATH']
+		realpath = ENV['PATH']
 		ENV['PATH'] = File.expand_path(File.dirname(__FILE__) + '/fixtures')
 		tmpfile = Tempfile.new('dnsmanager_faux_nsupdate')
 		ENV['FAUX_NSUPDATE_OUTPUT'] = tmpfile.path
 		yield if block_given?
 		output = File.read(tmpfile.path)
+		return output
+	ensure
 		tmpfile.close
 		tmpfile.unlink
 		
 		ENV['FAUX_NSUPDATE_KEY'] = nil
-		
-		return output
+		ENV['PATH'] = realpath
 	end
 
 	def with_pwfile(contents)
