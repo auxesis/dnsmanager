@@ -1,13 +1,13 @@
 #!/bin/sh -e
 
+/bin/cat >> $FAUX_NSUPDATE_OUTPUT
+
 if [ -n "$FAUX_NSUPDATE_KEY" ]; then
 	if [ "$1" != "-k" ] || [ "$2" != "$FAUX_NSUPDATE_KEY" ]; then
-		/bin/cat >/dev/null
-		exit 1
+		/bin/echo "update failed: REFUSED" >&2
+		exit 0
 	fi
 fi
-
-/bin/cat >> $FAUX_NSUPDATE_OUTPUT
 
 if /bin/grep 'server timeout' $FAUX_NSUPDATE_OUTPUT; then
 	/bin/echo "; Communication with server failed: timed out" >&2

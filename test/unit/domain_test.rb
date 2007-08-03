@@ -67,49 +67,47 @@ class DomainTest < Test::Unit::TestCase
 		end
 	end
 
-	def test_05_faux_nsupdate
-		nsupdate_output = nil
-		with_domainfile({}) do
-			nsupdate_output = faux_nsupdate do
-				IO.popen("nsupdate", 'w') do |fd|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
-				end
-			end
-		end
-		
-		assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
-	end
-
 	def test_06_faux_nsupdate_with_key
 		with_domainfile({}) do
 			full_key = File.expand_path(File.join(RAILS_ROOT, 'config', 'dns_keys', 'fooferore'))
 			# Fail with no key
+			err = nil
 			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				IO.popen("nsupdate", 'w') do |fd|
+				Open3.popen3("nsupdate") do |fd, stdout, stderr|
 					fd.puts "zone notarealdomain"
 					fd.puts "server dracula"
-				end
-			end
-			assert_equal "", nsupdate_output
-
-			# Fail with the wrong key
-			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				IO.popen("nsupdate -k someotherkey", 'w') do |fd|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
-				end
-			end
-			assert_equal "", nsupdate_output
-
-			# But the right key... bellissimo!
-			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				IO.popen("nsupdate -k #{full_key}", 'w') do |fd|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
+					fd.close
+					err = stderr.read
 				end
 			end
 			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
+			assert_equal "update failed: REFUSED\n", err
+
+			# Fail with the wrong key
+			err = nil
+			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
+				Open3.popen3("nsupdate -k someotherkey") do |fd, stdout, stderr|
+					fd.puts "zone notarealdomain"
+					fd.puts "server dracula"
+					fd.close
+					err = stderr.read
+				end
+			end
+			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
+			assert_equal "update failed: REFUSED\n", err
+
+			# But the right key... bellissimo!
+			err = nil
+			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
+				Open3.popen3("nsupdate -k #{full_key}") do |fd, stdout, stderr|
+					fd.puts "zone notarealdomain"
+					fd.puts "server dracula"
+					fd.close
+					err = stderr.read
+				end
+			end
+			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
+			assert_equal '', err
 		end
 		
 	end
@@ -158,7 +156,7 @@ class DomainTest < Test::Unit::TestCase
 			end
 		end
 
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete renfield.example.org CNAME flies\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete renfield.example.org CNAME flies\nsend\n", out
 	end
 
 	def test_35_record_deletion_by_domain_record
@@ -169,7 +167,7 @@ class DomainTest < Test::Unit::TestCase
 			end
 		end
 
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete baldie.example.org CNAME curly\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete baldie.example.org CNAME curly\nsend\n", out
 	end
 
 	def test_30_record_addition
@@ -180,7 +178,7 @@ class DomainTest < Test::Unit::TestCase
 			end
 		end
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add bling.example.org 86400 A 256.256.256.256\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate add bling.example.org 86400 A 256.256.256.256\nsend\n", out
 
 		out = faux_nsupdate do
 			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
@@ -189,7 +187,7 @@ class DomainTest < Test::Unit::TestCase
 			end
 		end
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add bling.example.org 1000000 A 256.256.256.256\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate add bling.example.org 1000000 A 256.256.256.256\nsend\n", out
 	end
 
 	def test_30_replace
@@ -207,6 +205,6 @@ class DomainTest < Test::Unit::TestCase
 			d.replace(dr, newdr)
 		end
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete larry.example.org A 192.168.1.1\nupdate add larry.example.org 19200 A 10.20.30.40\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete larry.example.org A 192.168.1.1\nupdate add larry.example.org 19200 A 10.20.30.40\nsend\n", out
 	end
 end

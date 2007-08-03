@@ -24,11 +24,15 @@ class NSUpdate
 		raise ArgumentError.new("You must give an RR type") unless opts[:type]
 		raise ArgumentError.new("You must provide some RR data") unless opts[:data]
 		
-		@current_request << "update add #{rrname}.#{@zone} #{opts[:ttl]} #{opts[:type]} #{opts[:data]}"
+		# A leading dot in the record we're adding gets stripped, because that
+		# means we have an empty rrname and hence the record we're working on
+		# is the zone itself
+		full_name = "#{rrname}.#{@zone}".gsub(/^\./, '')
+		@current_request << "update add #{full_name} #{opts[:ttl]} #{opts[:type]} #{opts[:data]}"
 	end
 
 	def delete rrname, opts = {}
-		bits = ["#{rrname}.#{@zone}", opts[:ttl], opts[:type], opts[:data]].select {|v| v}
+		bits = ["#{rrname}.#{@zone}".gsub(/^\./, ''), opts[:ttl], opts[:type], opts[:data]].select {|v| v}
 		@current_request << "update delete #{bits.join(' ')}"
 	end
 		
@@ -36,10 +40,19 @@ class NSUpdate
 	def send_update
 		@current_request = ["server #{@server}", "zone #{@zone}"] + @current_request
 		@current_request << 'send'
-		RAILS_DEFAULT_LOGGER.debug("Sending nsupdate request:")
-		@current_request.each { |l| RAILS_DEFAULT_LOGGER.debug('    ' + l) }
 
-		Open3.popen3('nsupdate') do |stdin, stdout, stderr|
+		if @key
+			cmd = "nsupdate -k #{@key}"
+		else
+			cmd = 'nsupdate'
+		end
+		
+		RAILS_DEFAULT_LOGGER.debug("Running #{cmd}")
+		RAILS_DEFAULT_LOGGER.debug("Giving nsupdate the following:")
+		@current_request.each { |l| RAILS_DEFAULT_LOGGER.debug('    ' + l) }
+		RAILS_DEFAULT_LOGGER.debug('-' * 20)
+		
+		Open3.popen3(cmd) do |stdin, stdout, stderr|
 			# Send the request...
 			@current_request.each { |l| stdin.puts(l) }
 			# Then close stdin so that nsupdate knows we're done
@@ -47,18 +60,11 @@ class NSUpdate
 			# And now we wait to see if we got an error
 			response = stderr.gets.to_s.strip
 			if response != ''
-				RAILS_DEFAULT_LOGGER.info("nsupdate failed: #{response}")
+				RAILS_DEFAULT_LOGGER.error("nsupdate failed: #{response}")
 				raise NSUpdate::Error.new(response)
 			end
 		end
 		
 		@current_request.clear
-	end
-	
-	private
-	# Log all calls to nsupdate
-	def `(cmd)  #`
-		RAILS_DEFAULT_LOGGER.debug("Running #{cmd}")
-		Kernel.`(cmd)  #`
 	end
 end

@@ -1,3 +1,5 @@
+require 'lib/nsupdate'
+
 class Domain
 	attr_reader :domain, :master
 
@@ -7,19 +9,11 @@ class Domain
 		@domain = domain
 		raise ArgumentError.new("Unknown domain #{@domain}") if domainlist[@domain].nil?
 		@master = domainlist[@domain]['master']
-		@keyopts = unless domainlist[@domain]['key'].nil?
-			keyfile = File.expand_path(File.join(RAILS_ROOT,
-			                                     'config',
-			                                     'dns_keys',
-			                                     domainlist[@domain]['key'] + '.private'
-			                                    ))
-			"-k #{keyfile}"
-		end
+		@key = domainlist[@domain]['key']
 		
 		@rrlist = []
 		
-		dig = Dig.new(:master => domainlist[@domain]['master'],
-		              :key => domainlist[@domain]['key'])
+		dig = Dig.new(:master => @master, :key => @key)
 		dig.axfr(@domain).each_line do |l|
 			l.chomp!.gsub!(/;.*$/, '')
 
@@ -51,23 +45,18 @@ class Domain
 
 	def add(host, rrtype, rrdata, ttl = 86400)
 		if rrtype.upcase == 'CNAME'
-			# CNAMEs get handled differently because of the whole
-			# relative/absolute thing.
-			if rrdata[-1] == '.'[0]
+			# Mangle the CNAME's data if it isn't already a fully-qualified
+			# name, otherwise just strip the trailing period.
+			if rrdata[-1] == ?\.
 				rrdata = rrdata[0..-2]
 			else
 				rrdata = "#{rrdata}.#{@domain}"
 			end
 		end
 
-		rrname = host.empty? ? @domain : "#{host}.#{@domain}"
-		
-		IO.popen("nsupdate #{@keyopts}", 'w') do |fd|
-			fd.puts "zone #{@domain}"
-			fd.puts "server #{@master}"
-			fd.puts "update add #{rrname} #{ttl} #{rrtype} #{rrdata}"
-			fd.puts "send"
-		end
+		n = NSUpdate.new(:server => @master, :zone => @domain, :key => @key)
+		n.add host, :type => rrtype, :ttl => ttl, :data => rrdata
+		n.send_update
 		
 		# EEeeeewww... But needed so I know what to put in the output to the
 		# user.  But again, eeew.
@@ -83,27 +72,17 @@ class Domain
 			raise ArgumentError.new("must give an rrtype") if rrtype.nil?
 		end
 
-		fqdn = "#{host}.#{@domain}".gsub(/^\./, '')
-			
-		IO.popen("nsupdate #{@keyopts}", 'w') do |fd|
-			fd.puts "zone #{@domain}"
-			fd.puts "server #{@master}"
-			fd.puts "update delete #{fqdn} #{rrtype} #{rrdata}"
-			fd.puts "send"
-		end
+		n = NSUpdate.new(:zone => @domain, :server => @master, :key => @key)
+		n.delete host, :type => rrtype, :data => rrdata
+		n.send_update
 	end
 
 	def replace(oldrr, newrr)
-		oldfqdn = "#{oldrr.hostname}.#{@domain}".gsub(/^\./, '')
-		newfqdn = "#{newrr.hostname}.#{@domain}".gsub(/^\./, '')
-
-		IO.popen("nsupdate #{@keyopts}", 'w') do |fd|
-			fd.puts "zone #{@domain}"
-			fd.puts "server #{@master}"
-			fd.puts "update delete #{oldfqdn} #{oldrr.rrtype} #{oldrr.rrdata}"
-			fd.puts "update add #{newfqdn} #{newrr.ttl} #{newrr.rrtype} #{newrr.rrdata}"
-			fd.puts "send"
-		end
+		n = NSUpdate.new(:server => @master, :zone => @domain, :key => @key)
+		n.delete oldrr.hostname, :type => oldrr.rrtype, :data => oldrr.rrdata
+		n.add newrr.hostname, :ttl => newrr.ttl, :type => newrr.rrtype,
+		      :data => newrr.rrdata
+		n.send_update
 	end
 
 	def [] rrtype

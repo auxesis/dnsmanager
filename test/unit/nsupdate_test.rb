@@ -85,6 +85,20 @@ class NSUpdateTest < Test::Unit::TestCase
 		             output
 	end
 
+	def test_050_add_with_key
+		output = faux_nsupdate(:wants_key => 'xyzzy.private') do
+			n = NSUpdate.new(:zone => 'example.org', :key => 'xyzzy')
+			n.add 'fred', :type => 'A', :data => '1.2.3.4', :ttl => 1234
+			assert_nothing_raised { n.send_update }
+		end
+		
+		assert_equal "server 127.0.0.1\n" +
+		             "zone example.org\n" +
+		             "update add fred.example.org 1234 A 1.2.3.4\n" +
+		             "send\n",
+		             output
+	end
+
 	def test_100_timeout_is_deadly
 		output = faux_nsupdate do
 			n = NSUpdate.new(:zone => 'example.org', :server => 'timeout')

@@ -143,7 +143,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete larry.example.org A 192.168.1.1\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete larry.example.org A 192.168.1.1\nsend\n", out
 		assert_equal "Record <tt>larry A 192.168.1.1</tt> has been deleted.", flash[:notice]
 	end
 
@@ -159,7 +159,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete example.org MX 10 moe.example.org.\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete example.org MX 10 moe.example.org.\nsend\n", out
 		assert_equal "Record <tt> MX 10 moe.example.org.</tt> has been deleted.", flash[:notice]
 	end
 	
@@ -179,7 +179,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_response :redirect
 			assert_redirected_to :action => 'zone'
 			
-			assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete larry.example.org A 192.168.1.1\nsend\n", out
+			assert_equal "server 127.0.0.1\nzone example.org\nupdate delete larry.example.org A 192.168.1.1\nsend\n", out
 			assert_equal "Record <tt>larry A 192.168.1.1</tt> has been deleted.", flash[:notice]
 		end
 	end
@@ -217,7 +217,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add hissy.example.org 300 TXT he's an adder!\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate add hissy.example.org 300 TXT he's an adder!\nsend\n", out
 		assert_equal "Record <tt>hissy 300 TXT he's an adder!</tt> has been added.", flash[:notice]
 	end
 
@@ -237,7 +237,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_response :redirect
 			assert_redirected_to :action => 'zone'
 			
-			assert_equal "zone example.org\nserver 127.0.0.1\nupdate add hissy.example.org 300 TXT he's an adder!\nsend\n", out
+			assert_equal "server 127.0.0.1\nzone example.org\nupdate add hissy.example.org 300 TXT he's an adder!\nsend\n", out
 			assert_equal "Record <tt>hissy 300 TXT he's an adder!</tt> has been added.", flash[:notice]
 		end
 	end
@@ -255,7 +255,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add hissy.example.org 300 CNAME foo.example.org\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate add hissy.example.org 300 CNAME foo.example.org\nsend\n", out
 		assert_equal "Record <tt>hissy 300 CNAME foo.example.org</tt> has been added.", flash[:notice]
 	end
 
@@ -272,7 +272,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate add hissy.example.org 300 CNAME foo.com\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate add hissy.example.org 300 CNAME foo.com\nsend\n", out
 		assert_equal "Record <tt>hissy 300 CNAME foo.com</tt> has been added.", flash[:notice]
 	end
 
@@ -423,7 +423,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_response :redirect
 		assert_redirected_to :action => 'zone'
 		
-		assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete example.org MX 10 moe.example.org.\nupdate add example.org 450 MX 20 curly.example.org.\nsend\n", out
+		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete example.org MX 10 moe.example.org.\nupdate add example.org 450 MX 20 curly.example.org.\nsend\n", out
 	end
 
 	with_mocha do
@@ -447,7 +447,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_response :redirect
 			assert_redirected_to :action => 'zone'
 			
-			assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete baldie.example.org CNAME curly\nupdate add baldie.example.org 450 CNAME shiny\nsend\n", out
+			assert_equal "server 127.0.0.1\nzone example.org\nupdate delete baldie.example.org CNAME curly\nupdate add baldie.example.org 450 CNAME shiny\nsend\n", out
 		end
 	end
 	
@@ -466,7 +466,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_response :redirect
 			assert_redirected_to :action => 'zone'
 			
-			assert_equal "zone example.org\nserver 127.0.0.1\nupdate add example.org 300 NS ns69.example.com.\nsend\n", out
+			assert_equal "server 127.0.0.1\nzone example.org\nupdate add example.org 300 NS ns69.example.com.\nsend\n", out
 		end
 	end
 	
@@ -490,7 +490,7 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_response :redirect
 			assert_redirected_to :action => 'zone'
 			
-			assert_equal "zone example.org\nserver 127.0.0.1\nupdate delete example.org NS ns1.example.org.\nupdate add example.org 450 NS ns3.example.org.\nsend\n", out
+			assert_equal "server 127.0.0.1\nzone example.org\nupdate delete example.org NS ns1.example.org.\nupdate add example.org 450 NS ns3.example.org.\nsend\n", out
 		end
 	end
 end
