@@ -8,3 +8,7 @@ if [ -n "$FAUX_NSUPDATE_KEY" ]; then
 fi
 
 /bin/cat >> $FAUX_NSUPDATE_OUTPUT
+
+if /bin/grep 'server timeout' $FAUX_NSUPDATE_OUTPUT; then
+	/bin/echo "; Communication with server failed: timed out" >&2
+fi
