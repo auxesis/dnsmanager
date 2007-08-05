@@ -1,0 +1,7 @@
+0.1.2 01-31-2007 Added get_elements, which gets elements with a particular text string.
+								 DRYs up assert_elements by using get_elements
+								 
+0.1.1 01-28-2007 Refactoring assert_elements to make better use of the case statement
+								 and other minor improvements.
+								 
+0.1   01-27-2007 INITIAL RELEASE
