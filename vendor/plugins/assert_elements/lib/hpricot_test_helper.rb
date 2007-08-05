@@ -58,12 +58,13 @@ module HpricotTestHelper
     ret = equality.keys.include?(:minimum) ? (els.size >= equality[:minimum]) : true 
     ret &&= (els.size <= equality[:maximum]) if equality.keys.include?(:maximum)
     ret &&= (els.size == equality[:count]) if equality.keys.include?(:count)
-    
+
     if block && !els.empty?
       ret &&= self.dup.instance_eval do
         @output = HpricotTestHelper::DocumentOutput.new(els.inner_html)
         @block = true 
         instance_eval(&block)
+        true
       end
     end
     
