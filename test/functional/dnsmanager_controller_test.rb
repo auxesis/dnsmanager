@@ -39,14 +39,11 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			get :zone
 		
 			assert_response :success
-			assert_tag :tag => 'select',
-			           :attributes => { :name => 'domain' },
-			           :children => { :count => 2,
-			                          :only => {:tag => 'option'}
-			                        }
+
+			assert_equal 2, elements("//select[@name='domain']/option").length
 			                        
-			assert_tag :tag => 'input', :attributes => { :type => 'submit', :name => 'commit', :value => "Change Domain" }
-			assert_no_tag :tag => 'a', :attributes => { :href => '/dnsmanager/add' }, :content => 'Add Record'
+			assert_elements("//input[@name='commit',@type='submit',@value='Change Domain']]")
+			assert_nil element("//a[@href='/dnsmanager/add']")
 		end
 	end
 
@@ -66,6 +63,9 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		              ['something.com'],
 		              ['xyzzy.net']],
 		             assigns(:domainlist)
+		assert_elements("//select[@name='domain']/option[@value='abba.biz']")
+		assert_elements("//select[@name='domain']/option[@value='']")
+		assert_equal '---', tag("//select[@name='domain']/option[@value='']")
 	end
 
 	def test_select_a_domain
@@ -76,7 +76,10 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		
 		assert_response :success
 		assert_equal 'something.com', session[:domain]
-		assert_tag :tag => 'option', :attributes => {:value => 'something.com', :selected => 'selected'}, :content => 'something.com'
+		assert_elements("//form[@action='/dnsmanager/zone']/p/select[@name='domain']") do
+			assert_elements("option[@value='something.com']")
+			assert_equal "something.com", tag("option[@value='something.com']")
+		end
 	end
 
 	def test_select_a_domain_we_dont_have
@@ -95,23 +98,14 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_equal 3, assigns['hosts'].length
 		
 		assert_response :success
-		assert_tag :tag => 'tr',
-		           :child =>
-		           {
-		            :tag => 'td',
-		            :content => 'larry'
-		           }
-		assert_tag :tag => 'td',
-		           :child => {
-		            :tag => 'a',
-		            :attributes => { :href => '/dnsmanager/delete/baldie__CNAME__curly.example.org.' },
-		            :content => '(delete)'
-		           }
+		assert tags("//tr/td").include?('larry')
+		assert_equal '(delete)', tag("//td/a[@href='/dnsmanager/delete/baldie__CNAME__curly.example.org.']")
 
-		assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/add' }, :content => 'Add Record'
-		assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/edit/baldie__CNAME__curly.example.org.' }, :content => '(edit)'
-		assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/edit/__MX__10+moe.example.org.' }, :content => '(edit)'
-		assert_tag :tag => 'option', :attributes => {:value => 'example.org', :selected => 'selected'}, :content => 'example.org'
+		assert_equal 'Add Record', tag("//a[@href='/dnsmanager/add']")
+		assert_equal '(edit)', tag("//a[@href='/dnsmanager/edit/baldie__CNAME__curly.example.org.']")
+		assert_equal '(edit)', tag("//a[@href='/dnsmanager/edit/__MX__10+moe.example.org.']")
+		assert_equal 'example.org', tag("//form[@action='/dnsmanager/zone']//select[@name='domain']/option[@selected='selected']")
+		assert_equal 'example.org', element("//form[@action='/dnsmanager/zone']//select[@name='domain']/option[@selected='selected']")['value']
 	end
 	
 	def test_show_domain_using_a_key
@@ -188,15 +182,15 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			
 		assert_response :success
 			
-		assert_tag :label, :attributes => { :for => 'hostname' }, :content => 'Hostname:'
-		assert_tag :input, :attributes => { :type => 'text', :name => 'hostname' }
-		assert_tag :label, :attributes => { :for => 'ttl' }, :content => 'TTL:'
-		assert_tag :input, :attributes => { :type => 'text', :name => 'ttl' }
-		assert_tag :label, :attributes => { :for => 'rrtype' }, :content => 'Type:'
-		assert_tag :input, :attributes => { :type => 'text', :name => 'rrtype' }
-		assert_tag :label, :attributes => { :for => 'rrdata' }, :content => 'Data:'
-		assert_tag :input, :attributes => { :type => 'text', :name => 'rrdata' }
-		assert_tag :input, :attributes => { :type => 'submit', :name => 'commit', :value => 'Add Record' }
+		assert_equal 'Hostname:', tag("//label[@for='hostname']")
+		assert_elements("//input[@type='text',@name='hostname']")
+		assert_equal 'TTL:', tag("//label[@for='ttl']")
+		assert_elements("//input[@type='text',@name='ttl']")
+		assert_equal 'Type:', tag("//label[@for='rrtype']")
+		assert_elements("//input[@type='text',@name='rrtype']")
+		assert_equal 'Data:', tag("//label[@for='rrdata']")
+		assert_elements("//input[@type='text',@name='rrdata']")
+		assert_elements("//input[@type='submit',@name='commit',@value='Add Record']")
 	end
 
 	def test_add_post
@@ -309,40 +303,13 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			
 		assert_response :success
 			
-		assert_tag :tag => 'form',
-		           :attributes => { 'method' => 'post',
-		                            'action' => '/dnsmanager/edit/moe__A__192.168.1.3'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'hostname',
-		                            'value' => 'moe'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'ttl',
-		                            'value' => '1200'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'rrtype',
-		                            'value' => 'A'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'rrdata',
-		                            'value' => '192.168.1.3'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'submit',
-		                            'name' => 'commit',
-		                            'value' => 'Update Record'
-		                          }
+		assert_elements("//form[@method='post',@action='/dnsmanager/edit/moe__A__192.168.1.3']") do
+			assert_elements("input[@type='text',@name='hostname',@value='moe']")
+			assert_elements("input[@type='text',@name='ttl',@value='1200']")
+			assert_elements("input[@type='text',@name='rrtype',@value='A']")
+			assert_elements("input[@type='text',@name='rrdata',@value='192.168.1.3']")
+			assert_elements("input[@type='submit',@name='commit',@value='Update Record']")
+		end
 	end
 
 	def test_edit_update
@@ -377,41 +344,14 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		end
 			
 		assert_response :success
-			
-		assert_tag :tag => 'form',
-		           :attributes => { 'method' => 'post',
-		                            'action' => '/dnsmanager/edit/__MX__10+moe.example.org.'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'hostname',
-		                            'value' => ''
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'ttl',
-		                            'value' => '1200'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'rrtype',
-		                            'value' => 'MX'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'text',
-		                            'name' => 'rrdata',
-		                            'value' => '10 moe.example.org.'
-		                          }
-
-		assert_tag :tag => 'input',
-		           :attributes => { 'type' => 'submit',
-		                            'name' => 'commit',
-		                            'value' => 'Update Record'
-		                          }
+		
+		assert_elements("//form[@method='post',@action='/dnsmanager/edit/__MX__10+moe.example.org.']") do
+			assert_elements("input[@type='text',@name='hostname',@value='']")
+			assert_elements("input[@type='text',@name='ttl',@value='1200']")
+			assert_elements("input[@type='text',@name='rrtype',@value='MX']")
+			assert_elements("input[@type='text',@name='rrdata',@value='10 moe.example.org.']")
+			assert_elements("input[@type='submit',@name='commit',@value='Update Record']")
+		end
 	end
 
 	def test_edit_update
