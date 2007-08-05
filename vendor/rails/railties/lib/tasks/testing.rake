@@ -45,12 +45,12 @@ task :test do
       Rake::Task[task].invoke
       nil
     rescue => e
-      e
+      [task, e]
     end
   end.compact
   
-  exceptions.each {|e| puts e;puts e.backtrace }
-  raise "Test failures" unless exceptions.empty?
+  puts '-' * 20 unless exceptions.empty?
+  exceptions.each {|e| puts "Failures in #{e[0]}" }
 end
 
 namespace :test do
