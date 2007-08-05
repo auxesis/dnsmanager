@@ -15,13 +15,13 @@ class Dig
 	def axfr(zone)
 		key_opt = @key ? "-k #{@key}" : ''
 		returning `dig #{key_opt} @#{@server} IN AXFR #{zone}` do |output|
+			RAILS_DEFAULT_LOGGER.warn("Dig failed with exit code #{$?.exitstatus}") if $?.exitstatus != 0
 			if output =~ /; Transfer failed/
 				RAILS_DEFAULT_LOGGER.warn("Dig failed.  Output was:")
 				output.each_line { |l| RAILS_DEFAULT_LOGGER.warn(l.strip) }
-				raise Dig::Error.new("Call to dig failed.")
+				raise Dig::Error.new("Zone transfer failed.")
 			elsif $?.exitstatus != 0
-				RAILS_DEFAULT_LOGGER.warn("Dig failed with exit code #{$?.exitstatus}")
-				raise Dig::Error.new("Call to dig failed.")
+				raise Dig::Error.new("Call to dig failed for an unknown reason.")
 			end
 		end
 	end

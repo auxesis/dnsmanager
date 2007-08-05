@@ -78,4 +78,18 @@ class DigTest < Test::Unit::TestCase
 			assert_raise(Dig::Error) { d.axfr('example.org') }
 		end
 	end
+
+	def test_130_dig_with_nonzero_return_raises_exception
+		faux_dig do
+			d = Dig.new
+			assert_raise(Dig::Error) { d.axfr('nonzeroexitcodeplz') }
+			begin
+				d.axfr('nonzeroexitcodeplz')
+			rescue Dig::Error => e
+				assert_equal "Call to dig failed for an unknown reason.", e.message
+			else
+				assert false, "We should have caught an exception, dammit!"
+			end
+		end
+	end
 end

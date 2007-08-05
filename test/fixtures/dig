@@ -32,6 +32,11 @@ fi
 if [ "$1" = "notarealdomain" ]; then
 	/bin/echo "I really love this stuff"
 elif [ "$1" = "@127.0.0.1" -a "$2" = "IN" -a "$3" = "AXFR" ]; then
+	if [ "$4" = "nonzeroexitcodeplz" ]; then
+		/bin/echo "; Exiting with non-zero code."
+		exit 1
+	fi
+	
 	if [ -f $HEREDIR/$4 ]; then
 		/bin/cat $HEREDIR/$4
 	else

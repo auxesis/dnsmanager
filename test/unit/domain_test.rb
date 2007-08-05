@@ -199,4 +199,12 @@ class DomainTest < Test::Unit::TestCase
 		newdr.rrdata = 'fluffy'
 		d.replace(dr, newdr)
 	end
+
+	def test_90_invalid_idstring_given_to_find
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+			assert_raise(ArgumentError) { d.find('xyzzy') }
+		end
+	end
 end

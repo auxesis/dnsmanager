@@ -69,14 +69,6 @@ class Domain
 	end
 
 	def delete(host, rrtype = nil, rrdata = nil)
-		if host.is_a? DomainRecord
-			rrtype = host.rrtype
-			rrdata = host.rrdata
-			host = host.hostname
-		else
-			raise ArgumentError.new("must give an rrtype") if rrtype.nil?
-		end
-
 		n = NSUpdate.new(:zone => @domain, :server => @master, :key => @key)
 		n.delete host, :type => rrtype, :data => rrdata
 		n.send_update
