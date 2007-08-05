@@ -1,4 +1,5 @@
-require 'lib/nsupdate'
+require 'nsupdate'
+require 'dig'
 
 class Domain
 	attr_reader :domain, :master
