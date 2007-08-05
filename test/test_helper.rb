@@ -22,9 +22,8 @@ class Test::Unit::TestCase
 	end
 	
 	def mock_axfr(opts)
-		d = mock
+		Dig.expects(:new).with(:master => opts[:master], :key => opts[:key]).returns(d = mock())
 		d.expects(:axfr).with(opts[:domain]).returns(File.read(File.dirname(__FILE__) + "/fixtures/#{opts[:domain]}"))
-		Dig.expects(:new).with(:master => opts[:master], :key => opts[:key]).returns(d)
 	end
 	
 	def faux_dig(opts = {})
