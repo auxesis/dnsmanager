@@ -138,8 +138,8 @@ class DomainTest < Test::Unit::TestCase
 		def test_30_record_addition
 			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 			NSUpdate.expects(:new).with(:server => '127.0.0.1',
-												 :zone => 'example.org',
-												 :key => nil).returns(n = mock())
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
 			n.expects(:add).with('bling', :type => 'A', :ttl => 86400, :data => '256.256.256.256')
 			n.expects(:send_update)
 			
@@ -154,8 +154,8 @@ class DomainTest < Test::Unit::TestCase
 		def test_31_record_addition_with_long_ttl
 			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 			NSUpdate.expects(:new).with(:server => '127.0.0.1',
-												 :zone => 'example.org',
-												 :key => nil).returns(n = mock())
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
 			n.expects(:add).with('bling', :type => 'A', :ttl => 1000000, :data => '256.256.256.256')
 			n.expects(:send_update)
 			
@@ -170,8 +170,8 @@ class DomainTest < Test::Unit::TestCase
 		def test_30_replace
 			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 			NSUpdate.expects(:new).with(:server => '127.0.0.1',
-												 :zone => 'example.org',
-												 :key => nil).returns(n = mock())
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
 			n.expects(:delete).with('larry', :type => 'A', :data => '192.168.1.1')
 			n.expects(:add).with('larry', :type => 'A', :ttl => 19200, :data => '10.20.30.40')
 			n.expects(:send_update)
