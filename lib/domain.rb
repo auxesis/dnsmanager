@@ -45,8 +45,13 @@ class Domain
 
 	def add(host, rrtype, rrdata, ttl = 86400)
 		if rrtype.upcase == 'CNAME'
-			# Mangle the CNAME's data if it isn't already a fully-qualified
-			# name, otherwise just strip the trailing period.
+			# Append the current domain to the CNAME data part if it isn't
+			# already a fully-qualified name, otherwise just strip the trailing
+			# period because nsupdate doesn't like trailing periods.
+			#
+			# FIXME: Should this be in NSUpdate instead?  I'm not sure.  It all
+			# depends on how faithful to the nsupdate command-line tool we want
+			# NSUpdate to be.
 			if rrdata[-1] == ?\.
 				rrdata = rrdata[0..-2]
 			else

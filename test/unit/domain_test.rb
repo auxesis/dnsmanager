@@ -67,51 +67,6 @@ class DomainTest < Test::Unit::TestCase
 		end
 	end
 
-	def test_06_faux_nsupdate_with_key
-		with_domainfile({}) do
-			full_key = File.expand_path(File.join(RAILS_ROOT, 'config', 'dns_keys', 'fooferore'))
-			# Fail with no key
-			err = nil
-			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				Open3.popen3("nsupdate") do |fd, stdout, stderr|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
-					fd.close
-					err = stderr.read
-				end
-			end
-			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
-			assert_equal "update failed: REFUSED\n", err
-
-			# Fail with the wrong key
-			err = nil
-			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				Open3.popen3("nsupdate -k someotherkey") do |fd, stdout, stderr|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
-					fd.close
-					err = stderr.read
-				end
-			end
-			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
-			assert_equal "update failed: REFUSED\n", err
-
-			# But the right key... bellissimo!
-			err = nil
-			nsupdate_output = faux_nsupdate(:wants_key => 'fooferore') do
-				Open3.popen3("nsupdate -k #{full_key}") do |fd, stdout, stderr|
-					fd.puts "zone notarealdomain"
-					fd.puts "server dracula"
-					fd.close
-					err = stderr.read
-				end
-			end
-			assert_equal "zone notarealdomain\nserver dracula\n", nsupdate_output
-			assert_equal '', err
-		end
-		
-	end
-
 	def test_10_instantiate_invalid_domain
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
 			assert_raise(ArgumentError) { Domain.new('invalid.org') }
@@ -149,62 +104,80 @@ class DomainTest < Test::Unit::TestCase
 	end
 	
 	def test_30_record_deletion
-		out = faux_nsupdate do
-			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-				d = Domain.new('example.org')
-				d.delete('renfield', 'CNAME', 'flies')
-			end
-		end
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:server => '127.0.0.1',
+		                            :zone => 'example.org',
+		                            :key => nil).returns(n = mock())
+		n.expects(:delete).with('renfield', :type => 'CNAME', :data => 'flies')
+		n.expects(:send_update)
 
-		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete renfield.example.org CNAME flies\nsend\n", out
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+			d.delete('renfield', 'CNAME', 'flies')
+		end
 	end
 
 	def test_35_record_deletion_by_domain_record
-		out = faux_nsupdate do
-			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-				d = Domain.new('example.org')
-				d.find('baldie__CNAME__curly').delete
-			end
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:server => '127.0.0.1',
+		                            :zone => 'example.org',
+		                            :key => nil).returns(n = mock())
+		n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly')
+		n.expects(:send_update)
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+			d.find('baldie__CNAME__curly').delete
 		end
-
-		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete baldie.example.org CNAME curly\nsend\n", out
 	end
 
 	def test_30_record_addition
-		out = faux_nsupdate do
-			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-				d = Domain.new('example.org')
-				d.add('bling', 'A', '256.256.256.256')
-			end
-		end
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:server => '127.0.0.1',
+		                            :zone => 'example.org',
+		                            :key => nil).returns(n = mock())
+		n.expects(:add).with('bling', :type => 'A', :ttl => 86400, :data => '256.256.256.256')
+		n.expects(:send_update)
 		
-		assert_equal "server 127.0.0.1\nzone example.org\nupdate add bling.example.org 86400 A 256.256.256.256\nsend\n", out
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+			d.add('bling', 'A', '256.256.256.256')
+		end
+	end
 
-		out = faux_nsupdate do
-			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-				d = Domain.new('example.org')
-				d.add('bling', 'A', '256.256.256.256', 1000000)
-			end
-		end
+	def test_31_record_addition_with_long_ttl
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:server => '127.0.0.1',
+		                            :zone => 'example.org',
+		                            :key => nil).returns(n = mock())
+		n.expects(:add).with('bling', :type => 'A', :ttl => 1000000, :data => '256.256.256.256')
+		n.expects(:send_update)
 		
-		assert_equal "server 127.0.0.1\nzone example.org\nupdate add bling.example.org 1000000 A 256.256.256.256\nsend\n", out
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+			d.add('bling', 'A', '256.256.256.256', 1000000)
+		end
 	end
 
 	def test_30_replace
-		out = faux_nsupdate do
-			d = nil
-			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-				d = Domain.new('example.org')
-			end
-			dr = d['A'][1]
-			assert_equal 'larry', dr.hostname
-			assert_equal '192.168.1.1', dr.rrdata
-			
-			newdr = dr.clone
-			newdr.rrdata = '10.20.30.40'
-			d.replace(dr, newdr)
-		end
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:server => '127.0.0.1',
+		                            :zone => 'example.org',
+		                            :key => nil).returns(n = mock())
+		n.expects(:delete).with('larry', :type => 'A', :data => '192.168.1.1')
+		n.expects(:add).with('larry', :type => 'A', :ttl => 19200, :data => '10.20.30.40')
+		n.expects(:send_update)
 		
-		assert_equal "server 127.0.0.1\nzone example.org\nupdate delete larry.example.org A 192.168.1.1\nupdate add larry.example.org 19200 A 10.20.30.40\nsend\n", out
+		d = nil
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			d = Domain.new('example.org')
+		end
+		dr = d['A'][1]
+		assert_equal 'larry', dr.hostname
+		assert_equal '192.168.1.1', dr.rrdata
+		assert_equal 19200, dr.ttl
+		
+		newdr = dr.clone
+		newdr.rrdata = '10.20.30.40'
+		d.replace(dr, newdr)
 	end
 end
