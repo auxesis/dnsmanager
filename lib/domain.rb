@@ -83,6 +83,10 @@ class Domain
 	end
 
 	def replace(oldrr, newrr)
+		raise ArgumentError.new("Cannot replace a host record with one with a different hostname") unless oldrr.hostname == newrr.hostname
+		if newrr.rrtype == 'CNAME' and newrr.rrdata[-1] != ?\.
+			newrr.rrdata = newrr.rrdata + '.' + @domain + '.'
+		end
 		n = NSUpdate.new(:server => @master, :zone => @domain, :key => @key)
 		n.delete oldrr.hostname, :type => oldrr.rrtype, :data => oldrr.rrdata
 		n.add newrr.hostname, :ttl => newrr.ttl, :type => newrr.rrtype,

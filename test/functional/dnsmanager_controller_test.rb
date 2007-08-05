@@ -107,12 +107,12 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			assert_tag :tag => 'td',
 			           :child => {
 			             :tag => 'a',
-			             :attributes => { :href => '/dnsmanager/delete/baldie__CNAME__curly' },
+			             :attributes => { :href => '/dnsmanager/delete/baldie__CNAME__curly.example.org.' },
 			             :content => '(delete)'
 			           }
 
 			assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/add' }, :content => 'Add Record'
-			assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/edit/baldie__CNAME__curly' }, :content => '(edit)'
+			assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/edit/baldie__CNAME__curly.example.org.' }, :content => '(edit)'
 			assert_tag :tag => 'a', :attributes => { :href => '/dnsmanager/edit/__MX__10+moe.example.org.' }, :content => '(edit)'
 			assert_tag :tag => 'option', :attributes => {:value => 'example.org', :selected => 'selected'}, :content => 'example.org'
 		end

@@ -53,12 +53,12 @@ class DomainTest < Test::Unit::TestCase
 			assert_equal DomainRecord, d['CNAME'][0].class
 			assert_equal 'CNAME', d['CNAME'][0].rrtype
 			assert_equal 'baldie', d['CNAME'][0].hostname
-			assert_equal 'curly', d['CNAME'][0].rrdata
+			assert_equal 'curly.example.org.', d['CNAME'][0].rrdata
 
 			assert_equal DomainRecord, d['CNAME'][1].class
 			assert_equal 'CNAME', d['CNAME'][1].rrtype
 			assert_equal 'ns1', d['CNAME'][1].hostname
-			assert_equal 'curly', d['CNAME'][1].rrdata
+			assert_equal 'curly.example.org.', d['CNAME'][1].rrdata
 			
 			assert_equal DomainRecord, d['MX'][0].class
 			assert_equal 'MX', d['MX'][0].rrtype
@@ -107,8 +107,8 @@ class DomainTest < Test::Unit::TestCase
 		def test_30_record_deletion
 			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 			NSUpdate.expects(:new).with(:server => '127.0.0.1',
-												 :zone => 'example.org',
-												 :key => nil).returns(n = mock())
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
 			n.expects(:delete).with('renfield', :type => 'CNAME', :data => 'flies')
 			n.expects(:send_update)
 
@@ -123,13 +123,13 @@ class DomainTest < Test::Unit::TestCase
 		def test_35_record_deletion_by_domain_record
 			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 			NSUpdate.expects(:new).with(:server => '127.0.0.1',
-												 :zone => 'example.org',
-												 :key => nil).returns(n = mock())
-			n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly')
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
+			n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly.example.org.')
 			n.expects(:send_update)
 			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
 				d = Domain.new('example.org')
-				d.find('baldie__CNAME__curly').delete
+				d.find('baldie__CNAME__curly.example.org.').delete
 			end
 		end
 	end
@@ -187,6 +187,33 @@ class DomainTest < Test::Unit::TestCase
 			
 			newdr = dr.clone
 			newdr.rrdata = '10.20.30.40'
+			d.replace(dr, newdr)
+		end
+	end
+
+	with_mocha do
+		def test_31_replace_with_relative_cname_target
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+			                            :zone => 'example.org',
+			                            :key => nil).returns(n = mock())
+			n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly.example.org.')
+			n.expects(:add).with('baldie', :type => 'CNAME', :ttl => 666, :data => 'fluffy.example.org.')
+			n.expects(:send_update)
+			
+			d = nil
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+			end
+			dr = d['CNAME'][0]
+			assert_equal 'baldie', dr.hostname
+			assert_equal 'CNAME', dr.rrtype
+			assert_equal 'curly.example.org.', dr.rrdata
+			assert_equal 1200, dr.ttl
+			
+			newdr = dr.clone
+			newdr.ttl = 666
+			newdr.rrdata = 'fluffy'
 			d.replace(dr, newdr)
 		end
 	end

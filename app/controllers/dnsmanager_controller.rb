@@ -59,7 +59,6 @@ class DnsmanagerController < ApplicationController
 		
 		if params['commit'] == 'Update Record'
 			newrr = @rr.clone
-			newrr.hostname = params['hostname']
 			newrr.ttl = params['ttl']
 			newrr.rrtype = params['rrtype']
 			newrr.rrdata = params['rrdata']
