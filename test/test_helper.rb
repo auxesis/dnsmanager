@@ -9,18 +9,11 @@ require 'tempfile'
 begin
 	require 'mocha'
 rescue LoadError
-	puts "You do not have Mocha installed.  Some tests will not be run."
+	puts "This test suite requires Mocha.  Please run 'gem install mocha' and try again."
+	exit 0
 end
 
 class Test::Unit::TestCase
-	def with_mocha
-		yield if block_given? and defined?(Mocha)
-	end
-
-	def self.with_mocha
-		yield if defined?(Mocha) and block_given?
-	end
-	
 	def mock_axfr(opts)
 		Dig.expects(:new).with(:master => opts[:master], :key => opts[:key]).returns(d = mock())
 		d.expects(:axfr).with(opts[:domain]).returns(File.read(File.dirname(__FILE__) + "/fixtures/#{opts[:domain]}"))
