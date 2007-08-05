@@ -102,82 +102,92 @@ class DomainTest < Test::Unit::TestCase
 			assert d.find('larry__A__127.0.0.1').nil?
 		end
 	end
+
+	with_mocha do
+		def test_30_record_deletion
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+												 :zone => 'example.org',
+												 :key => nil).returns(n = mock())
+			n.expects(:delete).with('renfield', :type => 'CNAME', :data => 'flies')
+			n.expects(:send_update)
+
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+				d.delete('renfield', 'CNAME', 'flies')
+			end
+		end
+	end
 	
-	def test_30_record_deletion
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
-		NSUpdate.expects(:new).with(:server => '127.0.0.1',
-		                            :zone => 'example.org',
-		                            :key => nil).returns(n = mock())
-		n.expects(:delete).with('renfield', :type => 'CNAME', :data => 'flies')
-		n.expects(:send_update)
-
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			d = Domain.new('example.org')
-			d.delete('renfield', 'CNAME', 'flies')
+	with_mocha do
+		def test_35_record_deletion_by_domain_record
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+												 :zone => 'example.org',
+												 :key => nil).returns(n = mock())
+			n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly')
+			n.expects(:send_update)
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+				d.find('baldie__CNAME__curly').delete
+			end
+		end
+	end
+	
+	with_mocha do
+		def test_30_record_addition
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+												 :zone => 'example.org',
+												 :key => nil).returns(n = mock())
+			n.expects(:add).with('bling', :type => 'A', :ttl => 86400, :data => '256.256.256.256')
+			n.expects(:send_update)
+			
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+				d.add('bling', 'A', '256.256.256.256')
+			end
 		end
 	end
 
-	def test_35_record_deletion_by_domain_record
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
-		NSUpdate.expects(:new).with(:server => '127.0.0.1',
-		                            :zone => 'example.org',
-		                            :key => nil).returns(n = mock())
-		n.expects(:delete).with('baldie', :type => 'CNAME', :data => 'curly')
-		n.expects(:send_update)
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			d = Domain.new('example.org')
-			d.find('baldie__CNAME__curly').delete
+	with_mocha do
+		def test_31_record_addition_with_long_ttl
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+												 :zone => 'example.org',
+												 :key => nil).returns(n = mock())
+			n.expects(:add).with('bling', :type => 'A', :ttl => 1000000, :data => '256.256.256.256')
+			n.expects(:send_update)
+			
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+				d.add('bling', 'A', '256.256.256.256', 1000000)
+			end
 		end
 	end
 
-	def test_30_record_addition
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
-		NSUpdate.expects(:new).with(:server => '127.0.0.1',
-		                            :zone => 'example.org',
-		                            :key => nil).returns(n = mock())
-		n.expects(:add).with('bling', :type => 'A', :ttl => 86400, :data => '256.256.256.256')
-		n.expects(:send_update)
-		
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			d = Domain.new('example.org')
-			d.add('bling', 'A', '256.256.256.256')
+	with_mocha do
+		def test_30_replace
+			mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+			NSUpdate.expects(:new).with(:server => '127.0.0.1',
+												 :zone => 'example.org',
+												 :key => nil).returns(n = mock())
+			n.expects(:delete).with('larry', :type => 'A', :data => '192.168.1.1')
+			n.expects(:add).with('larry', :type => 'A', :ttl => 19200, :data => '10.20.30.40')
+			n.expects(:send_update)
+			
+			d = nil
+			with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+				d = Domain.new('example.org')
+			end
+			dr = d['A'][1]
+			assert_equal 'larry', dr.hostname
+			assert_equal '192.168.1.1', dr.rrdata
+			assert_equal 19200, dr.ttl
+			
+			newdr = dr.clone
+			newdr.rrdata = '10.20.30.40'
+			d.replace(dr, newdr)
 		end
-	end
-
-	def test_31_record_addition_with_long_ttl
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
-		NSUpdate.expects(:new).with(:server => '127.0.0.1',
-		                            :zone => 'example.org',
-		                            :key => nil).returns(n = mock())
-		n.expects(:add).with('bling', :type => 'A', :ttl => 1000000, :data => '256.256.256.256')
-		n.expects(:send_update)
-		
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			d = Domain.new('example.org')
-			d.add('bling', 'A', '256.256.256.256', 1000000)
-		end
-	end
-
-	def test_30_replace
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
-		NSUpdate.expects(:new).with(:server => '127.0.0.1',
-		                            :zone => 'example.org',
-		                            :key => nil).returns(n = mock())
-		n.expects(:delete).with('larry', :type => 'A', :data => '192.168.1.1')
-		n.expects(:add).with('larry', :type => 'A', :ttl => 19200, :data => '10.20.30.40')
-		n.expects(:send_update)
-		
-		d = nil
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			d = Domain.new('example.org')
-		end
-		dr = d['A'][1]
-		assert_equal 'larry', dr.hostname
-		assert_equal '192.168.1.1', dr.rrdata
-		assert_equal 19200, dr.ttl
-		
-		newdr = dr.clone
-		newdr.rrdata = '10.20.30.40'
-		d.replace(dr, newdr)
 	end
 end
