@@ -28,98 +28,19 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 
 	def test_access_denied
 		unlogin
-		get :index
+		get :add, :domain => 'example.org'
 		
 		assert_response 401
 		assert_equal 'Basic realm="DNS Manager"', @response.headers['WWW-Authenticate']
 	end
 
-	def test_empty_zone
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :zone
-		
-			assert_response :success
-
-			assert_equal 2, elements("//select[@name='domain']/option").length
-			                        
-			assert_elements("//input[@name='commit',@type='submit',@value='Change Domain']]")
-			assert_nil element("//a[@href='/dnsmanager/add']")
-		end
-	end
-
-	def test_sorted_domain_list
-		with_domainfile('example.org' => {'master' => '127.0.0.1'},
-		                'something.com' => {'master' => '127.0.0.1'},
-		                'xyzzy.net' => {'master' => '127.0.0.1'},
-		                'abba.biz' => {'master' => '127.0.0.1'},
-		                'hezmatt.org' => {'master' => '127.0.0.1'}) do
-			get :zone
-		end
-		
-		assert_equal [['---', ''],
-		              ['abba.biz'],
-		              ['example.org'],
-		              ['hezmatt.org'],
-		              ['something.com'],
-		              ['xyzzy.net']],
-		             assigns(:domainlist)
-		assert_elements("//select[@name='domain']/option[@value='abba.biz']")
-		assert_elements("//select[@name='domain']/option[@value='']")
-		assert_equal '---', tag("//select[@name='domain']/option[@value='']")
-	end
-
-	def test_select_a_domain
-		mock_axfr(:master => '127.0.0.1', :domain => 'something.com')
-		with_domainfile('something.com' => {'master' => '127.0.0.1'}) do
-			post :zone, {:domain => 'something.com', :commit => 'Change Domain'}
-		end
-		
-		assert_response :success
-		assert_equal 'something.com', session[:domain]
-		assert_elements("//form[@action='/dnsmanager/zone']/p/select[@name='domain']") do
-			assert_elements("option[@value='something.com']")
-			assert_equal "something.com", tag("option[@value='something.com']")
-		end
-	end
-
-	def test_select_a_domain_we_dont_have
-		# FIXME: Write this test
-	end
-
-	def test_show_domain
-		mock_axfr(:master => '127.0.0.1', :domain => 'example.org')
-		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :zone, {}, {:domain => 'example.org'}
-		end
-		
-		assert_equal DomainRecord, assigns['soa'].class
-		assert_equal 2, assigns['ns'].length
-		assert_equal 3, assigns['aliases'].length
-		assert_equal 3, assigns['hosts'].length
-		
-		assert_response :success
-		assert tags("//tr/td").include?('larry')
-		assert_equal '(delete)', tag("//td/a[@href='/dnsmanager/delete/baldie__CNAME__curly.example.org.']")
-
-		assert_equal 'Add Record', tag("//a[@href='/dnsmanager/add']")
-		assert_equal '(edit)', tag("//a[@href='/dnsmanager/edit/baldie__CNAME__curly.example.org.']")
-		assert_equal '(edit)', tag("//a[@href='/dnsmanager/edit/__MX__10+moe.example.org.']")
-		assert_equal 'example.org', tag("//form[@action='/dnsmanager/zone']//select[@name='domain']/option[@selected='selected']")
-		assert_equal 'example.org', element("//form[@action='/dnsmanager/zone']//select[@name='domain']/option[@selected='selected']")['value']
-	end
-	
-	def test_show_domain_using_a_key
-		mock_axfr(:domain => 'example.org', :master => '127.0.0.1',
-		          :key => 'Kexample.org.+157.+random')
-		with_domainfile('example.org' => {'master' => '127.0.0.1', 'key' => 'Kexample.org.+157.+random'}) do
-			get :zone, {}, {:domain => 'example.org'}
-		end
-			
-		# If we got *something*, we'll consider it a win
-		assert_equal DomainRecord, assigns['soa'].class
-	end
-
 	def test_delete_a_record
+		assert_routing '/example.org/delete/fake_id',
+		               :controller => 'dnsmanager',
+		               :action => 'delete',
+		               :domain => 'example.org',
+		               :id => 'fake_id'
+		               
 		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 		NSUpdate.expects(:new).with(:zone => 'example.org',
 		                            :server => '127.0.0.1',
@@ -128,11 +49,11 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		n.expects(:send_update)
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :delete, { :id => "larry__A__192.168.1.1" }, { :domain => 'example.org' }
+			get :delete, :id => "larry__A__192.168.1.1", :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 		assert_equal "Record <tt>larry A 192.168.1.1</tt> has been deleted.", flash[:notice]
 	end
 
@@ -145,11 +66,11 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		n.expects(:send_update)
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :delete, { :id => "__MX__10+moe.example.org." }, { :domain => 'example.org' }
+			get :delete, :id => "__MX__10+moe.example.org.", :domain => 'example.org'
 		end
 		
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt> MX 10 moe.example.org.</tt> has been deleted.", flash[:notice]
 	end
@@ -165,19 +86,24 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		n.expects(:send_update)
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1', 'key' => 'Kexample.org.+157+00000'}) do
-			get :delete, { :id => "larry__A__192.168.1.1" }, { :domain => 'example.org' }
+			get :delete, :id => "larry__A__192.168.1.1", :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt>larry A 192.168.1.1</tt> has been deleted.", flash[:notice]
 	end
 	
 	def test_add_display
+		assert_routing '/example.org/add',
+		               :controller => 'dnsmanager',
+		               :action => 'add',
+		               :domain => 'example.org'
+
 		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :add, {}, {:domain => 'example.org'}
+			get :add, :domain => 'example.org'
 		end
 			
 		assert_response :success
@@ -208,13 +134,13 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			       :ttl => 300,
 			       :rrtype => "TXT",
 			       :rrdata => "he's an adder!",
-			       :commit => 'Add Record'
-			     },
-			     { :domain => 'example.org' }
+			       :commit => 'Add Record',
+			       :domain => 'example.org'
+			     }
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt>hissy 300 TXT he's an adder!</tt> has been added.", flash[:notice]
 	end
@@ -231,12 +157,12 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1', 'key' => 'Kexample.org.+157+00000'}) do
 			post :add,
-			     { :hostname => "hissy", :ttl => 300, :rrtype => "TXT", :rrdata => "he's an adder!", :commit => 'Add Record' },
-			     { :domain => 'example.org' }
+			     :hostname => "hissy", :ttl => 300, :rrtype => "TXT", :rrdata => "he's an adder!", :commit => 'Add Record',
+			     :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt>hissy 300 TXT he's an adder!</tt> has been added.", flash[:notice]
 	end
@@ -252,12 +178,12 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
 			post :add,
-			     { :hostname => "hissy", :ttl => 300, :rrtype => "CNAME", :rrdata => "foo", :commit => 'Add Record' },
-			     { :domain => 'example.org' }
+			     :hostname => "hissy", :ttl => 300, :rrtype => "CNAME", :rrdata => "foo", :commit => 'Add Record',
+			     :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt>hissy 300 CNAME foo.example.org</tt> has been added.", flash[:notice]
 	end
@@ -273,12 +199,12 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
 			post :add,
-			     { :hostname => "hissy", :ttl => 300, :rrtype => "CNAME", :rrdata => "foo.com.", :commit => 'Add Record' },
-			     { :domain => 'example.org' }
+			     :hostname => "hissy", :ttl => 300, :rrtype => "CNAME", :rrdata => "foo.com.", :commit => 'Add Record',
+			     :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Record <tt>hissy 300 CNAME foo.com</tt> has been added.", flash[:notice]
 	end
@@ -286,19 +212,25 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 	def test_edit_unknown_record
 		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :edit, { :id => 'flahflah__A__127.0.0.1' }, { :domain => 'example.org'}
+			get :edit, :id => 'flahflah__A__127.0.0.1', :domain => 'example.org'
 		end
 
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 			
 		assert_equal "Could not find record with ID <tt>flahflah__A__127.0.0.1</tt>", flash[:error]
 	end
 
 	def test_edit_begin
+		assert_routing '/example.org/edit/fake_id',
+		               :controller => 'dnsmanager',
+		               :action => 'edit',
+		               :domain => 'example.org',
+		               :id => 'fake_id'
+		               
 		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :edit, { :id => 'moe__A__192.168.1.3' }, { :domain => 'example.org' }
+			get :edit, :id => 'moe__A__192.168.1.3', :domain => 'example.org'
 		end
 			
 		assert_response :success
@@ -328,19 +260,19 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			              :ttl => '450',
 			              :rrtype => 'CNAME',
 			              :rrdata => 'shiny',
-			              :commit => 'Update Record'
-			            },
-		               { :domain => 'example.org' }
+			              :commit => 'Update Record',
+		                 :domain => 'example.org'
+		               }
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 	end
 	
 	def test_mx_edit_begin
 		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
-			get :edit, { :id => '__MX__10+moe.example.org.' }, { :domain => 'example.org' }
+			get :edit, :id => '__MX__10+moe.example.org.', :domain => 'example.org'
 		end
 			
 		assert_response :success
@@ -370,14 +302,13 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			              :ttl => '450',
 			              :rrtype => 'MX',
 			              :rrdata => '20 curly.example.org.',
-			              :commit => 'Update Record'
-			            },
-			            { :domain => 'example.org'
+			              :commit => 'Update Record',
+			              :domain => 'example.org'
 			            }
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 	end
 	
 	def test_edit_update_with_key
@@ -397,13 +328,13 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			              :ttl => '450',
 			              :rrtype => 'CNAME',
 			              :rrdata => 'shiny',
-			              :commit => 'Update Record'
-			            },
-			            { :domain => 'example.org' }
+			              :commit => 'Update Record',
+			              :domain => 'example.org'
+			            }
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 	end
 	
 	def test_add_an_ns_record
@@ -417,12 +348,12 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 
 		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
 			post :add,
-			     { :hostname => "", :ttl => 300, :rrtype => "NS", :rrdata => "ns69.example.com.", :commit => 'Add Record' },
-			     { :domain => 'example.org' }
+			     :hostname => "", :ttl => 300, :rrtype => "NS", :rrdata => "ns69.example.com.", :commit => 'Add Record',
+			     :domain => 'example.org'
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 	end
 	
 	def test_edit_update_for_ns_record
@@ -441,13 +372,13 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 			              :ttl => '450',
 			              :rrtype => 'NS',
 			              :rrdata => 'ns3.example.org.',
-			              :commit => 'Update Record'
-			            },
-			            { :domain => 'example.org' }
+			              :commit => 'Update Record',
+			              :domain => 'example.org'
+			            }
 		end
 			
 		assert_response :redirect
-		assert_redirected_to :action => 'zone'
+		assert_redirected_to '/example.org'
 	end
 
 	def test_add_fails_because_the_key_was_wrong
