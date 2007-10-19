@@ -381,6 +381,14 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		assert_redirected_to '/example.org'
 	end
 
+	def test_support_deprecated_zone_action
+		# We used to use /dnsmanager/zone to manage zones, but we're going
+		# RESTful and don't need this URL any more, but it's apparently in
+		# bookmarks or URL history, so we'll support it for now.
+		assert_recognizes({ :controller => 'domain', :action => 'index' },
+		                  '/dnsmanager/zone')
+	end
+
 	def test_add_fails_because_the_key_was_wrong
 		# FIXME: write this test
 	end
