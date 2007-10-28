@@ -389,6 +389,56 @@ class DnsmanagerControllerTest < Test::Unit::TestCase
 		                  '/dnsmanager/zone')
 	end
 
+	def test_add_fails_because_nsupdate_failed
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:zone => 'example.org',
+		                            :server => '127.0.0.1',
+		                            :key => nil
+		                           ).returns(n = mock())
+		n.expects(:add).with('', :type => 'MX', :ttl => '450', :data => "mx.example.org.")
+		n.expects(:send_update).raises(NSUpdate::Error.new("MX records must have a priority!"))
+
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			post :add, { :hostname => '',
+			             :ttl => '450',
+			             :rrtype => 'MX',
+			             :rrdata => 'mx.example.org.',
+			             :commit => 'Add Record',
+			             :domain => 'example.org'
+			            }
+		end
+			
+		assert_response :success
+		
+		assert_equal "Update failed: MX records must have a priority!", flash[:error]
+	end
+
+	def test_edit_fails_because_nsupdate_failed
+		mock_axfr(:domain => 'example.org', :master => '127.0.0.1')
+		NSUpdate.expects(:new).with(:zone => 'example.org',
+		                            :server => '127.0.0.1',
+		                            :key => nil
+		                           ).returns(n = mock())
+		n.expects(:delete).with('', :type => 'NS', :data => 'ns1.example.org.')
+		n.expects(:add).with('', :type => 'MX', :ttl => '450', :data => "mx.example.org.")
+		n.expects(:send_update).raises(NSUpdate::Error.new("MX records must have a priority!"))
+
+		with_domainfile('example.org' => {'master' => '127.0.0.1'}) do
+			post :edit, { :id => '__NS__ns1.example.org.',
+			              :hostname => '',
+			              :ttl => '450',
+			              :rrtype => 'MX',
+			              :rrdata => 'mx.example.org.',
+			              :commit => 'Update Record',
+			              :domain => 'example.org'
+			            }
+		end
+			
+		assert_response :success
+		
+		assert_equal "Update failed: MX records must have a priority!", flash[:error]
+	end
+
 	def test_add_fails_because_the_key_was_wrong
 		# FIXME: write this test
 	end

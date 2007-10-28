@@ -16,10 +16,14 @@ class DnsmanagerController < ApplicationController
 		@domain = Domain.new(params[:domain])
 		@rr = DomainRecord.new(@domain)
 
-		if params['commit'] == 'Add Record'
-			params['rrdata'] = @domain.add(params['hostname'], params['rrtype'], params['rrdata'], params['ttl'])
-			flash[:notice] = "Record <tt>#{params['hostname']} #{params['ttl']} #{params['rrtype']} #{params['rrdata']}</tt> has been added."
-			redirect_to domain_path(:domain => params[:domain])
+		begin
+			if params['commit'] == 'Add Record'
+				params['rrdata'] = @domain.add(params['hostname'], params['rrtype'], params['rrdata'], params['ttl'])
+				flash[:notice] = "Record <tt>#{params['hostname']} #{params['ttl']} #{params['rrtype']} #{params['rrdata']}</tt> has been added."
+				redirect_to domain_path(:domain => params[:domain])
+			end
+		rescue NSUpdate::Error => e
+			flash[:error] = "Update failed: #{e.message}"
 		end
 	end
 
@@ -33,14 +37,18 @@ class DnsmanagerController < ApplicationController
 			return
 		end
 		
-		if params['commit'] == 'Update Record'
-			newrr = @rr.clone
-			newrr.ttl = params['ttl']
-			newrr.rrtype = params['rrtype']
-			newrr.rrdata = params['rrdata']
-			@domain.replace(@rr, newrr)
-			
-			redirect_to domain_path(params[:domain])
+		begin
+			if params['commit'] == 'Update Record'
+				newrr = @rr.clone
+				newrr.ttl = params['ttl']
+				newrr.rrtype = params['rrtype']
+				newrr.rrdata = params['rrdata']
+				@domain.replace(@rr, newrr)
+				
+				redirect_to domain_path(params[:domain])
+			end
+		rescue NSUpdate::Error => e
+			flash[:error] = "Update failed: #{e.message}"
 		end
 	end
 
